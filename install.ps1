@@ -1,4 +1,7 @@
 #Requires -Version 5.1
+# NOTE: keep this file UTF-8 without BOM and ASCII-only inside string literals.
+# `irm ... | iex` treats a leading BOM as part of the first command name.
+# Vietnamese text is allowed in comments only.
 <#
 .SYNOPSIS
   NESIX installer cho Windows.

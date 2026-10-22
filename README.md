@@ -75,7 +75,7 @@ nesix
 Cài bản cụ thể hoặc thư mục khác:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/0xcRachel/discord-nesix/main/install.ps1))) -Version 1.2.1 -Dir "D:\Tools\Nesix"
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/0xcRachel/discord-nesix/main/install.ps1))) -Version 1.2.2 -Dir "D:\Tools\Nesix"
 ```
 
 Không muốn thêm PATH:
