@@ -1,0 +1,12 @@
+node_modules/
+data/detectable.json
+data/state.json
+data/state.json.tmp
+data/state.json.corrupt-*
+data/steam-owned.json
+data/quests-debug.json
+logs/
+cache/
+*.log
+.nesix-temp/
+.release/

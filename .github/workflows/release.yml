@@ -1,0 +1,77 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag version, ví dụ v1.2.0 (phải khớp package.json)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build release zip
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            ./scripts/build-release.ps1
+          } else {
+            ./scripts/build-release.ps1 -SkipTagCheck
+          }
+
+      - name: Verify zip contents
+        shell: pwsh
+        run: |
+          $entries = (Get-ChildItem .release -Force | Select-Object -ExpandProperty Name) -join ', '
+          Write-Host "Release files: $entries"
+          if (-not (Test-Path .release/nesix.zip)) { throw 'Thiếu nesix.zip' }
+          if (-not (Test-Path .release/nesix.zip.sha256)) { throw 'Thiếu nesix.zip.sha256' }
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nesix-release
+          path: |
+            .release/nesix.zip
+            .release/nesix.zip.sha256
+          retention-days: 14
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          $tag = $env:INPUT_TAG
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $tag = $env:GITHUB_REF_NAME
+          }
+          if (-not $tag) { throw 'Không xác định được tag.' }
+
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($tag -ne "v$version") {
+            throw "Tag $tag không khớp version $version trong package.json."
+          }
+
+          gh release view $tag 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag đã tồn tại, cập nhật asset."
+            gh release upload $tag .release/nesix.zip .release/nesix.zip.sha256 --clobber
+          } else {
+            gh release create $tag .release/nesix.zip .release/nesix.zip.sha256 `
+              --title "NESIX $tag" --generate-notes
+          }

@@ -1,0 +1,29 @@
+{
+  "name": "discord-nesix-auto",
+  "version": "1.2.0",
+  "description": "Discord Quest & Badge Toolkit: quest auto-completer, Steam game detection farm, Game Variety / Game Time tracker",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "nesix": "index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "setup": "node index.js --setup",
+    "status": "node index.js --status",
+    "farm": "node index.js --farm",
+    "doctor": "node index.js --doctor",
+    "build:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.3",
+    "conf": "^12.0.0",
+    "inquirer": "^9.2.12",
+    "ora": "^8.0.1"
+  }
+}
