@@ -120,6 +120,10 @@ if ($ShowHelp) {
 
 $ErrorActionPreference = 'Stop'
 
+if ($PSVersionTable.PSVersion.Major -ge 6 -and (-not $IsWindows)) {
+    throw 'This installer requires Windows.'
+}
+
 $script:OriginalProgressPreference = $ProgressPreference
 $script:OriginalOutputEncoding = $null
 
@@ -364,6 +368,15 @@ if ((Test-Path $targetDir) -and (-not (Test-Path $manifestPath)) -and (-not $For
     $existing = @(Get-ChildItem -Path $targetDir -Force -ErrorAction SilentlyContinue)
     if ($existing.Count -gt 0) {
         throw "Directory $targetDir already contains data and is not a NESIX install. Use a different -Dir or -Force if you are sure."
+    }
+}
+
+$lockFile = Join-Path $targetDir 'data\nesix.lock'
+if (Test-Path $lockFile) {
+    Write-Warn 'NESIX appears to be running (data\nesix.lock exists).'
+    if (-not (Confirm-Action 'Stop it first. Continue the update anyway?')) {
+        Write-Host 'Cancelled.'
+        return
     }
 }
 
