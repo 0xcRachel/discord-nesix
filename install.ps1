@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
   NESIX installer cho Windows.
@@ -75,19 +75,19 @@ for ($argIndex = 0; $argIndex -lt $argList.Count; $argIndex++) {
 
     switch ($argName) {
         '-Version' {
-            if ($argIndex + 1 -ge $argList.Count) { throw 'Thiếu giá trị cho -Version.' }
+            if ($argIndex + 1 -ge $argList.Count) { throw 'Missing value for -Version.' }
             $argIndex += 1
             $Version = [string]$argList[$argIndex]
             break
         }
         '-Dir' {
-            if ($argIndex + 1 -ge $argList.Count) { throw 'Thiếu giá trị cho -Dir.' }
+            if ($argIndex + 1 -ge $argList.Count) { throw 'Missing value for -Dir.' }
             $argIndex += 1
             $Dir = [string]$argList[$argIndex]
             break
         }
         '-ZipPath' {
-            if ($argIndex + 1 -ge $argList.Count) { throw 'Thiếu giá trị cho -ZipPath.' }
+            if ($argIndex + 1 -ge $argList.Count) { throw 'Missing value for -ZipPath.' }
             $argIndex += 1
             $ZipPath = [string]$argList[$argIndex]
             break
@@ -101,7 +101,7 @@ for ($argIndex = 0; $argIndex -lt $argList.Count; $argIndex++) {
         '-SkipDoctor' { $SkipDoctor = $true; break }
         '-Help' { $ShowHelp = $true; break }
         '-h' { $ShowHelp = $true; break }
-        default { throw "Tham số không hợp lệ: $argName" }
+        default { throw "Unknown argument: $argName" }
     }
 }
 
@@ -155,7 +155,7 @@ function Get-DefaultDir {
         $base = [Environment]::GetFolderPath('LocalApplicationData')
     }
     if (-not $base) {
-        throw 'Không xác định được thư mục LOCALAPPDATA.'
+        throw 'Could not resolve LOCALAPPDATA.'
     }
     return (Join-Path $base 'Nesix')
 }
@@ -180,7 +180,7 @@ function Confirm-Action([string]$Message) {
     } catch {
         return $false
     }
-    return ($answer -match '^(y|yes|co|có)$')
+    return ($answer -match '^(y|yes)$')
 }
 
 function Refresh-ProcessPath {
@@ -228,11 +228,11 @@ function Install-NodeWithWinget {
     if (-not $winget) {
         return $false
     }
-    Write-Step 'Cài Node.js LTS bằng winget...'
+    Write-Step 'Installing Node.js LTS via winget...'
     & winget install --id OpenJS.NodeJS.LTS -e --source winget --silent `
         --accept-package-agreements --accept-source-agreements
     if ($LASTEXITCODE -ne 0) {
-        Write-Warn "winget trả mã $LASTEXITCODE."
+        Write-Warn "winget exited with code $LASTEXITCODE."
     }
     Refresh-ProcessPath
     return $true
@@ -248,7 +248,7 @@ function Invoke-Download([string]$Url, [string]$OutFile) {
             return
         } catch {
             if ($attempt -ge 3) {
-                throw "Tải thất bại: $Url`n$($_.Exception.Message)"
+                throw "Download failed: $Url`n$($_.Exception.Message)"
             }
             Start-Sleep -Seconds (2 * $attempt)
         }
@@ -258,17 +258,17 @@ function Invoke-Download([string]$Url, [string]$OutFile) {
 function Assert-Checksum([string]$ZipFile, [string]$ShaFile) {
     $raw = (Get-Content -Path $ShaFile -Raw -ErrorAction Stop).Trim()
     if (-not $raw) {
-        throw "File checksum rỗng: $ShaFile"
+        throw "Checksum file is empty: $ShaFile"
     }
     $expected = ($raw -split '\s+')[0].ToLowerInvariant()
     if ($expected -notmatch '^[0-9a-f]{64}$') {
-        throw "File checksum không hợp lệ: $ShaFile"
+        throw "Invalid checksum file: $ShaFile"
     }
     $actual = (Get-FileHash -Path $ZipFile -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actual -ne $expected) {
-        throw "SHA256 không khớp, huỷ cài đặt.`n  Mong đợi: $expected`n  Thực tế:  $actual"
+        throw "SHA256 mismatch, aborting install.`n  Expected: $expected`n  Actual:   $actual"
     }
-    Write-Step "SHA256 hợp lệ ($($expected.Substring(0, 12))...)"
+    Write-Step "SHA256 verified ($($expected.Substring(0, 12))...)"
 }
 
 function Add-UserPath([string]$PathToAdd) {
@@ -315,31 +315,31 @@ $manifestPath = Join-Path $targetDir 'install.json'
 
 if ($Uninstall) {
     if (-not (Test-Path $targetDir)) {
-        Write-Host "Không thấy thư mục cài: $targetDir"
+        Write-Host "Install directory not found: $targetDir"
         return
     }
 
-    $message = "Gỡ NESIX khỏi $targetDir? (data, cache và log trong thư mục này sẽ bị xoá)"
+    $message = "Uninstall NESIX from $targetDir? (data, cache and logs in this folder will be deleted)"
     if ($Purge) {
         $configLabel = Get-AppDataDir
         if (-not $configLabel) {
             $configLabel = '%APPDATA%\discord-nesix'
         }
-        $message = "Gỡ NESIX và xoá toàn bộ config/token trong $configLabel?"
+        $message = "Uninstall NESIX and delete all config/token in $configLabel?"
     }
     if (-not (Confirm-Action $message)) {
-        Write-Host 'Đã huỷ.'
+        Write-Host 'Cancelled.'
         return
     }
 
-    Write-Step 'Xoá PATH...'
+    Write-Step 'Removing PATH entry...'
     Remove-UserPath $shimDir
 
-    Write-Step "Xoá $targetDir..."
+    Write-Step "Removing $targetDir..."
     Remove-Item -Path $targetDir -Recurse -Force
 
     if ($Purge) {
-        Write-Step 'Xoá config và dữ liệu tạm...'
+        Write-Step 'Removing config and temp data...'
         $configDir = Get-AppDataDir
         if ($configDir -and (Test-Path $configDir)) {
             Remove-Item -Path $configDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -351,7 +351,7 @@ if ($Uninstall) {
     }
 
     Write-Host ''
-    Write-Host 'Đã gỡ NESIX.' -ForegroundColor Green
+    Write-Host 'NESIX uninstalled.' -ForegroundColor Green
     return
 }
 
@@ -360,7 +360,7 @@ if ($Uninstall) {
 if ((Test-Path $targetDir) -and (-not (Test-Path $manifestPath)) -and (-not $Force)) {
     $existing = @(Get-ChildItem -Path $targetDir -Force -ErrorAction SilentlyContinue)
     if ($existing.Count -gt 0) {
-        throw "Thư mục $targetDir đã có dữ liệu và không phải bản cài NESIX. Dùng -Dir khác hoặc -Force nếu chắc chắn."
+        throw "Directory $targetDir already contains data and is not a NESIX install. Use a different -Dir or -Force if you are sure."
     }
 }
 
@@ -376,21 +376,21 @@ if (-not $NoNodeCheck) {
 
     if ((-not $nodeVersion) -or ($nodeVersion.Major -lt $MinNodeMajor)) {
         if ($nodeVersion) {
-            Write-Warn "Node.js hiện tại $nodeVersion, cần >= $MinNodeMajor."
+            Write-Warn "Node.js $nodeVersion found, need >= $MinNodeMajor."
         } else {
-            Write-Warn 'Chưa tìm thấy Node.js.'
+            Write-Warn 'Node.js not found.'
         }
 
         $shouldInstall = $false
         if ($InstallNode) {
             $shouldInstall = $true
-        } elseif (Confirm-Action 'Cài Node.js LTS bằng winget? (không có winget thì mở trang tải tay)') {
+        } elseif (Confirm-Action 'Install Node.js LTS via winget? (manual download if winget is unavailable)') {
             $shouldInstall = $true
         }
 
         if ($shouldInstall) {
             if (-not (Install-NodeWithWinget)) {
-                throw 'Không tìm thấy winget. Tải Node.js thủ công tại https://nodejs.org/en/download rồi chạy lại.'
+                throw 'winget not found. Install Node.js manually from https://nodejs.org/en/download and rerun.'
             }
             $nodeExe = Find-NodeExe
             if ($nodeExe) {
@@ -399,7 +399,7 @@ if (-not $NoNodeCheck) {
         }
 
         if ((-not $nodeExe) -or (-not $nodeVersion) -or ($nodeVersion.Major -lt $MinNodeMajor)) {
-            throw "Cần Node.js >= $MinNodeMajor. Tải tại https://nodejs.org/en/download (chọn LTS), sau đó chạy lại installer."
+            throw "Node.js >= $MinNodeMajor is required. Download LTS from https://nodejs.org/en/download and rerun the installer."
         }
     }
 
@@ -409,7 +409,7 @@ if (-not $NoNodeCheck) {
 if (-not $nodeExe) {
     $nodeExe = Find-NodeExe
     if (-not $nodeExe) {
-        throw 'Không tìm thấy node.exe. Bỏ -NoNodeCheck hoặc cài Node.js trước.'
+        throw 'node.exe not found. Remove -NoNodeCheck or install Node.js first.'
     }
 }
 
@@ -419,7 +419,7 @@ if (-not (Test-Path $npmExe)) {
     if ($npmCmd) {
         $npmExe = $npmCmd.Source
     } else {
-        throw 'Không tìm thấy npm.cmd. Cài lại Node.js LTS.'
+        throw 'npm.cmd not found. Reinstall Node.js LTS.'
     }
 }
 
@@ -431,24 +431,24 @@ $keepTempZip = $false
 if ($ZipPath) {
     $zipFile = [IO.Path]::GetFullPath($ZipPath)
     if (-not (Test-Path $zipFile)) {
-        throw "Không thấy file zip: $zipFile"
+        throw "Zip file not found: $zipFile"
     }
-    Write-Step "Dùng file local: $zipFile"
+    Write-Step "Using local zip: $zipFile"
 
     $localSha = "$zipFile.sha256"
     if (Test-Path $localSha) {
         Assert-Checksum $zipFile $localSha
     } else {
-        Write-Warn 'Không có file .sha256 đi kèm, bỏ qua kiểm tra checksum.'
+        Write-Warn 'No .sha256 file next to the zip, skipping checksum verification.'
     }
 } else {
     if ($Version) {
         $cleanVersion = $Version -replace '^[vV]', ''
         $downloadBase = "$ReleasesBase/download/v$cleanVersion"
-        Write-Step "Tải NESIX v$cleanVersion..."
+        Write-Step "Downloading NESIX v$cleanVersion..."
     } else {
         $downloadBase = "$ReleasesBase/latest/download"
-        Write-Step 'Tải NESIX bản mới nhất...'
+        Write-Step 'Downloading latest NESIX release...'
     }
 
     $tempZip = Join-Path $env:TEMP ("nesix-" + [guid]::NewGuid().ToString('N') + ".zip")
@@ -463,7 +463,7 @@ if ($ZipPath) {
         if (Test-Path $shaFile) {
             Remove-Item $shaFile -Force -ErrorAction SilentlyContinue
         }
-        throw "Không tải hoặc không xác minh được checksum. Chi tiết: $($_.Exception.Message)"
+        throw "Could not download or verify checksum. Details: $($_.Exception.Message)"
     } finally {
         if (Test-Path $shaFile) {
             Remove-Item $shaFile -Force -ErrorAction SilentlyContinue
@@ -478,15 +478,15 @@ if ($ZipPath) {
 $stageDir = Join-Path $env:TEMP ("nesix-stage-" + [guid]::NewGuid().ToString('N'))
 
 try {
-    Write-Step 'Giải nén...'
+    Write-Step 'Extracting...'
     New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
     Expand-Archive -Path $zipFile -DestinationPath $stageDir -Force
 
     if (-not (Test-Path (Join-Path $stageDir 'index.js'))) {
-        throw 'Gói tải về không hợp lệ: thiếu index.js.'
+        throw 'Invalid package: index.js is missing.'
     }
     if (-not (Test-Path (Join-Path $stageDir 'package.json'))) {
-        throw 'Gói tải về không hợp lệ: thiếu package.json.'
+        throw 'Invalid package: package.json is missing.'
     }
 
     New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
@@ -498,7 +498,7 @@ try {
         Remove-Item -Path $oldSrc -Recurse -Force
     }
 
-    Write-Step "Cài vào $targetDir..."
+    Write-Step "Installing to $targetDir..."
     Copy-Item -Path (Join-Path $stageDir '*') -Destination $targetDir -Recurse -Force
 } finally {
     if (Test-Path $stageDir) {
@@ -515,17 +515,17 @@ $installedVersion = $package.version
 
 # ─── Cài dependency ───────────────────────────────────────────────────────────
 
-Write-Step 'Cài dependency (npm ci)...'
+Write-Step 'Installing dependencies (npm ci)...'
 Push-Location $targetDir
 try {
     $env:npm_config_update_notifier = 'false'
 
     & $npmExe ci --omit=dev --no-audit --no-fund
     if ($LASTEXITCODE -ne 0) {
-        Write-Warn 'npm ci thất bại, thử npm install...'
+        Write-Warn 'npm ci failed, trying npm install...'
         & $npmExe install --omit=dev --no-audit --no-fund
         if ($LASTEXITCODE -ne 0) {
-            throw "npm install thất bại (mã $LASTEXITCODE)."
+            throw "npm install failed (exit code $LASTEXITCODE)."
         }
     }
 } finally {
@@ -566,12 +566,12 @@ $manifestJson = $manifest | ConvertTo-Json -Depth 4
 # ─── Doctor ───────────────────────────────────────────────────────────────────
 
 if (-not $SkipDoctor) {
-    Write-Step 'Kiểm tra môi trường (--doctor)...'
+    Write-Step 'Running environment check (--doctor)...'
     Push-Location $targetDir
     try {
         & $nodeExe index.js --doctor
     } catch {
-        Write-Warn "Doctor lỗi: $($_.Exception.Message)"
+        Write-Warn "Doctor failed: $($_.Exception.Message)"
     } finally {
         Pop-Location
     }
@@ -580,14 +580,16 @@ if (-not $SkipDoctor) {
 # ─── Kết thúc ─────────────────────────────────────────────────────────────────
 
 Write-Host ''
-Write-Host "NESIX v$installedVersion đã cài tại: $targetDir" -ForegroundColor Green
+Write-Host "NESIX v$installedVersion installed at: $targetDir" -ForegroundColor Green
 if ($pathAdded) {
-    Write-Host "Đã thêm $shimDir vào PATH người dùng. Mở terminal mới để dùng lệnh 'nesix'." -ForegroundColor Yellow
-} elseif ($NoPath) {
-    Write-Host "Chưa thêm PATH. Chạy trực tiếp: $shimPath" -ForegroundColor Yellow
+    Write-Host "Added $shimDir to user PATH. Open a new terminal to use 'nesix'." -ForegroundColor Yellow
+} elseif (-not $NoPath) {
+    Write-Host "PATH already contains $shimDir." -ForegroundColor Yellow
+} else {
+    Write-Host "PATH not modified. Run directly: $shimPath" -ForegroundColor Yellow
 }
 Write-Host ''
-Write-Host 'Bắt đầu:'
+Write-Host 'Get started:'
 Write-Host '  nesix --doctor'
 Write-Host '  nesix --farm --dry-run'
 Write-Host '  nesix'
