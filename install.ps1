@@ -52,19 +52,68 @@
 .EXAMPLE
   .\install.ps1 -Version 1.2.0 -Dir D:\Tools\Nesix -NoPath
 #>
-[CmdletBinding()]
-param(
-    [string]$Version = '',
-    [string]$Dir = '',
-    [string]$ZipPath = '',
-    [switch]$NoPath,
-    [switch]$InstallNode,
-    [switch]$NoNodeCheck,
-    [switch]$Uninstall,
-    [switch]$Purge,
-    [switch]$Force,
-    [switch]$SkipDoctor
-)
+# Không dùng param() ở đây: `irm ... | iex` không chấp nhận khối param ở đầu.
+# Tham số được parse thủ công để hỗ trợ cả ba cách chạy:
+#   .\install.ps1 -NoPath
+#   irm .../install.ps1 | iex
+#   & ([scriptblock]::Create((irm .../install.ps1))) -Version 1.2.0
+$Version = ''
+$Dir = ''
+$ZipPath = ''
+$NoPath = $false
+$InstallNode = $false
+$NoNodeCheck = $false
+$Uninstall = $false
+$Purge = $false
+$Force = $false
+$SkipDoctor = $false
+$ShowHelp = $false
+
+$argList = @($args)
+for ($argIndex = 0; $argIndex -lt $argList.Count; $argIndex++) {
+    $argName = [string]$argList[$argIndex]
+
+    switch ($argName) {
+        '-Version' {
+            if ($argIndex + 1 -ge $argList.Count) { throw 'Thiếu giá trị cho -Version.' }
+            $argIndex += 1
+            $Version = [string]$argList[$argIndex]
+            break
+        }
+        '-Dir' {
+            if ($argIndex + 1 -ge $argList.Count) { throw 'Thiếu giá trị cho -Dir.' }
+            $argIndex += 1
+            $Dir = [string]$argList[$argIndex]
+            break
+        }
+        '-ZipPath' {
+            if ($argIndex + 1 -ge $argList.Count) { throw 'Thiếu giá trị cho -ZipPath.' }
+            $argIndex += 1
+            $ZipPath = [string]$argList[$argIndex]
+            break
+        }
+        '-NoPath' { $NoPath = $true; break }
+        '-InstallNode' { $InstallNode = $true; break }
+        '-NoNodeCheck' { $NoNodeCheck = $true; break }
+        '-Uninstall' { $Uninstall = $true; break }
+        '-Purge' { $Purge = $true; break }
+        '-Force' { $Force = $true; break }
+        '-SkipDoctor' { $SkipDoctor = $true; break }
+        '-Help' { $ShowHelp = $true; break }
+        '-h' { $ShowHelp = $true; break }
+        default { throw "Tham số không hợp lệ: $argName" }
+    }
+}
+
+if ($ShowHelp) {
+    Write-Host 'NESIX installer'
+    Write-Host ''
+    Write-Host '  irm https://raw.githubusercontent.com/0xcRachel/discord-nesix/main/install.ps1 | iex'
+    Write-Host '  .\install.ps1 [-Version <x.y.z>] [-Dir <path>] [-ZipPath <file>] [-NoPath]'
+    Write-Host '                [-InstallNode] [-NoNodeCheck] [-SkipDoctor] [-Force] [-Help]'
+    Write-Host '  .\install.ps1 -Uninstall [-Purge] [-Force]'
+    return
+}
 
 $ErrorActionPreference = 'Stop'
 

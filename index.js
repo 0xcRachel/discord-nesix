@@ -53,7 +53,7 @@ import {
   askText,
 } from './src/ui/menu.js';
 
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 
 const globalAbort = new AbortController();
 let shuttingDown = false;
