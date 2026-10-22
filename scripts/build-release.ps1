@@ -36,6 +36,15 @@ if (-not (Test-Path $packagePath)) {
 $package = Get-Content -Path $packagePath -Raw | ConvertFrom-Json
 $version = $package.version
 
+# install.ps1 phải không có BOM: `irm ... | iex` coi BOM la mot phan cua lenh dau tien.
+$installerPath = Join-Path $root 'install.ps1'
+if (Test-Path $installerPath) {
+    $installerBytes = [IO.File]::ReadAllBytes($installerPath)
+    if ($installerBytes.Length -ge 3 -and $installerBytes[0] -eq 0xEF -and $installerBytes[1] -eq 0xBB -and $installerBytes[2] -eq 0xBF) {
+        throw 'install.ps1 must be UTF-8 without BOM, otherwise the irm|iex one-liner fails.'
+    }
+}
+
 if ($env:GITHUB_REF_NAME -and (-not $SkipTagCheck)) {
     $expectedTag = "v$version"
     if ($env:GITHUB_REF_NAME -ne $expectedTag) {
